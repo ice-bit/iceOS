@@ -10,7 +10,6 @@
 #include "drivers/idt.h"
 #include "drivers/timer.h"
 #include "drivers/keyboard.h"
-#include "drivers/initrd.h"
 #include "mem/paging.h"
 #include "mem/kheap.h"
 #include "mem/multiboot.h"
@@ -24,22 +23,7 @@
 #define PRTAT printf("\n["); printf_color(" ** ", LIGHT_BROWN, BLACK); printf("]"); // Ugly hack to print "[ * ]"
 #define PRTER printf("\n["); printf_color(" ERR ", LIGHT_RED, BLACK); printf("]"); // Ugly hack to print "[ ER ]"
 
-uint32_t initrd_setup( struct multiboot *mboot_ptr) {
-    if(mboot_ptr->mods_count < 0) { // Assert that initrd image is available
-        PRTER
-        puts("   - initrd not found!");
-        PANIC("Cannot find initrd");
-    }
-
-    extern uint32_t placement_addr;
-    uint32_t initrd_location = *((uint32_t*)mboot_ptr->mods_addr);
-    uint32_t initrd_end = *(uint32_t*)(mboot_ptr->mods_addr+4);
-    placement_addr = initrd_end;
-
-    return initrd_location;
-}
-
-void kernel_main(unsigned long magic, uint32_t addr, struct multiboot *mboot_ptr) {
+void kernel_main(uint32_t magic, uint32_t addr) {
     // First of all, check if we're booted by a Multiboot-compliant boot loader
     if(magic != MULTIBOOT2_BOOTLOADER_MAGIC) {
         PRTER
@@ -72,16 +56,9 @@ void kernel_main(unsigned long magic, uint32_t addr, struct multiboot *mboot_ptr
     PRTOK
     printf("   - Loaded PS/2 driver");
 
-    uint32_t loc = initrd_setup(mboot_ptr); // Setup initial ramdisk
-
     init_paging(); // Initialize paging
     PRTOK
     printf("   - Loaded Paging");
-
-    // Now we can start initrd
-    fs_root = init_ramdisk(loc);
-    PRTOK
-    printf("    - Loaded Initrd");
     
     PRTAT
     printf("   - Testing heap...\t");
